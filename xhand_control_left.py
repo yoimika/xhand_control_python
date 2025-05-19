@@ -3,7 +3,7 @@ import time
 from pynput import keyboard  # 新增键盘监听库
 from xhand_controller import xhand_control
 import socket
-from data_split import parse_hand_data_left, get_data_left
+from data_split import parse_hand_data_left, get_data_left, get_latest_data
 
 # 设置 LD_LIBRARY_PATH 环境变量
 script_dir = os.path.dirname(os.path.realpath(__file__))
@@ -243,10 +243,11 @@ def start_server(xhand_exam, host='0.0.0.0', port=54321):  # 改为0.0.0.0监听
                     data = data.decode('ASCII')
                     # print(len(data))
                     if len(data) > 1000:
+                        data = get_latest_data(data)
                         data = parse_hand_data_left(data)
                         for joint_name in data:
                             print(f"{joint_name}: {data[joint_name]}")
-                        data = get_data(data)
+                        data = get_data_left(data)
                         xhand_exam.realtime(data)
 
 
