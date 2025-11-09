@@ -4,6 +4,7 @@ from pynput import keyboard  # 新增键盘监听库
 from xhand_controller import xhand_control
 import socket
 from data_split import parse_hand_data_left, get_data_left, get_latest_data
+from double_buffer_client import DoubleBufferClient
 
 # 设置 LD_LIBRARY_PATH 环境变量
 script_dir = os.path.dirname(os.path.realpath(__file__))
@@ -223,6 +224,17 @@ class XHandControlExample:
 
 
 def start_server(xhand_exam, host='0.0.0.0', port=54321):  # 改为0.0.0.0监听所有接口
+    socket_manager = DoubleBufferClient(host=host, port=port)
+    socket_manager.listen()
+    # socket_manager.init()
+    while True:
+        # data = socket_manager.rec()
+        data = socket_manager.get_data()
+        data = parse_hand_data_left(data)
+        for joint_name in data:
+            print(f"{joint_name}: {data[joint_name]}")
+        data = get_data_left(data)
+        xhand_exam.realtime(data)
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind((host, port))
         s.listen(5)

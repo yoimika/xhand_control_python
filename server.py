@@ -17,5 +17,3 @@ def start_server(host='0.0.0.0', port=54321):  # 改为0.0.0.0监听所有接口
                     print(f"接收到数据: {data.decode('ASCII')}")
                     conn.sendall(b"Message received")
 
-if __name__ == "__main__":
-    start_server()

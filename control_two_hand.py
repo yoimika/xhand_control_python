@@ -2,11 +2,13 @@ import os
 import time
 import socket
 from xhand_control_left import XHandControlExample
-from data_split import parse_hand_data_left, parse_hand_data_right, get_data_left, get_data_right
+from data_split import parse_hand_data_left, parse_hand_data_right, get_data_left, get_data_right, get_latest_data
 from camera import *
 from write import DataRecorder
 # from multiprocessing import Process, Queue
 from queue import Queue
+# from tmp import Socket
+from double_buffer_client import DoubleBufferClient
 
 # 设置 LD_LIBRARY_PATH 环境变量
 script_dir = os.path.dirname(os.path.realpath(__file__))
@@ -19,7 +21,25 @@ print(f"LD_LIBRARY_PATH: {os.environ['LD_LIBRARY_PATH']}\n")
 # data_queue0 = Queue(maxsize=100)
 # data_queue1 = Queue(maxsize=100)
 
-def start_server(xhand_exam_left, xhand_exam_right, recorder, rs_pipelines, host='0.0.0.0', port=54321):  # 改为0.0.0.0监听所有接口
+def start_server(xhand_exam_left, xhand_exam_right, recorder, rs_pipelines, host='127.0.0.1', port=54321):  # 改为0.0.0.0监听所有接口
+    
+    socket_manager = DoubleBufferClient(host=host, port=port)
+    socket_manager.listen()
+    # socket_manager.init()
+    while True:
+        data = socket_manager.get_data()
+        data_left = parse_hand_data_left(data)
+        # for joint_name in data:
+        #     print(f"{joint_name}: {data[joint_name]}")
+        data_left = get_data_left(data_left)
+        xhand_exam_left.realtime(data_left)
+
+        data_right = parse_hand_data_right(data)
+        data_right = get_data_right(data_right)
+        xhand_exam_right.realtime(data_right)
+
+
+
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind((host, port))
         s.listen(5)
@@ -36,20 +56,7 @@ def start_server(xhand_exam_left, xhand_exam_right, recorder, rs_pipelines, host
                 with conn:
                     # print(f"接收到来自 {addr} 的连接")
                     t1 = time.time()
-                    data_buffer = bytearray()
-                    while True:
-                        try:
-                            data = conn.recv(4096)
-                            if not data:
-                                break
-                            data_buffer.extend(data)
-                        except socket.error as e:
-                            print("error: {e}")
-                            break
-                    
-                    if not data_buffer:
-                        break
-                    data = data_buffer
+                    data = conn.recv(4096)
                     # print(f"接收到数据: {data.decode('ASCII')}")
                     # conn.sendall(b"Message received")
 
@@ -59,6 +66,7 @@ def start_server(xhand_exam_left, xhand_exam_right, recorder, rs_pipelines, host
                     # print(len(data))
                     if len(data) > 700:
                         # print()
+                        data = get_latest_data(data)
                         # print('left hand')
                         data_left = parse_hand_data_left(data)
                         # for joint_name in data_left:
