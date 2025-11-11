@@ -1,5 +1,4 @@
 import socket
-# from typing import override
 import multiprocessing
 import threading
 
@@ -50,6 +49,23 @@ class Socket:
         print("Socket Manager Quit")
     
 class DoubleBufferClient(Socket):
+    '''
+    用来接收从 unity 传来的数据的客户端类，保证数据完整和最新
+    通过开启一个线程来接收数据并更新缓冲区
+    这里假设数据格式为：
+        | 数据长度 | 一个空格 | 数据内容（可变长度）|
+        数据长度为左补齐 0 的长度为 6 的 int 字符，表示数据内容的长度
+        比如：
+            000007 嘉然今天吃什么
+    
+    ---
+    主要用法：
+        client = DoubleBufferClient( host, port )
+        client.listen()  # 开始监听
+        data = client.get_data()  # 获取最新数据
+        ...
+        client.quit()  # 退出客户端
+    '''
     def __init__(self, host, port):
         super().__init__(host, port)
 
@@ -80,10 +96,30 @@ class DoubleBufferClient(Socket):
         # self.process.daemon = True
         # self.process.start()
     
+    def get_data(self):
+        # return self.data_manager.buffer
+        while self.buffer is None:
+            continue
+        with self.lock:
+            return self.buffer
+    
+    def stop(self):
+        with self.lock:
+            self.is_running = False
+        if self.thread and self.thread.is_alive():
+            self.thread.join(timeout=2)
+        
+    def quit(self):
+        self.stop()
+        super().quit()
+
+    #region 数据处理相关
     def _is_data_length_valid(self, data):
+        '''检查数据前前端是否包含完整的长度信息'''
         return len(data) >= self._length_offset + self._length_size
 
     def _is_data_valid(self, data):
+        '''检查数据是否包含完整的数据内容'''
         if self._is_data_length_valid(data):
             length = self._get_data_length(data)
             return len(data) >= self._data_offset + length 
@@ -91,10 +127,12 @@ class DoubleBufferClient(Socket):
             return False
 
     def _get_data_length(self, data):
+        '''获取数据长度'''
         assert self._is_data_length_valid(data)
         return int(data[self._length_offset:self._length_offset+self._length_size])
     
     def _get_data_info(self, data, cut_data=False):
+        '''获取长度和内容，如果 cut_data 为 True，则额外返回剩余数据'''
         assert self._is_data_valid(data)
         length = self._get_data_length(data)
         ret_data = data[self._data_offset:self._data_offset+length]
@@ -104,6 +142,7 @@ class DoubleBufferClient(Socket):
         return length, ret_data, None
         
     def _update_buffer(self):
+        '''接收数据并更新缓冲区'''
         buffer2 = ""
         while True:
             # self.send(self._damn_message)
@@ -121,25 +160,7 @@ class DoubleBufferClient(Socket):
                 with self.lock:
                     self.buffer = data
                 buffer2 = next_data
-    
-
-    def get_data(self):
-        # return self.data_manager.buffer
-        while self.buffer is None:
-            continue
-        with self.lock:
-            return self.buffer
-    
-    def stop(self):
-        with self.lock:
-            self.is_running = False
-        if self.thread and self.thread.is_alive():
-            self.thread.join(timeout=2)
-        
-    # @override
-    def quit(self):
-        self.stop()
-        super().quit()
+    #endregion
         
 if __name__ == '__main__':
     client = DoubleBufferClient('0.0.0.0', 54321)
@@ -151,4 +172,7 @@ if __name__ == '__main__':
             print(data, len(data))
     except Exception as e:
         print(e)
+    finally:
         client.quit()
+        print("Client quit")
+    
