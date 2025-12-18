@@ -1,5 +1,6 @@
 import re
-from trans import to_euler_zyx
+import numpy as np
+from scipy.spatial.transform import Rotation as R
 
 DEFAULT_ONE_HAND = """
 0.000000 0.000000 0.000000 0.000000 1.000000 0.000000 0.000000 0.000000 0.000000 0.000000 1.000000 0.000000 0.000000 0.000000 1.000000 0.000000 0.000000 0.000000 1.000000 0.000000 0.000000 0.000000 1.000000 0.000000 0.000000 0.000000 1.000000 0.000000 0.000000 0.000000 1.000000 0.000000 0.000000 0.000000 1.000000 0.000000 0.000000 0.000000 1.000000 0.000000 0.000000 0.000000 1.000000 0.000000 0.000000 0.000000 1.000000 0.000000 0.000000 0.000000 1.000000 0.000000 0.000000 0.000000 1.000000 0.000000 0.000000 0.000000 1.000000 0.000000 0.000000 0.000000 1.000000 0.000000 0.000000 0.000000 1.000000 0.000000 0.000000 0.000000 1.000000 0.000000 0.000000 0.000000 1.000000 0.000000 0.000000 0.000000 1.000000 0.000000 0.000000 0.000000 1.000000 (0.000000 0.000000 0.000000 0.000000 0.000000)
@@ -43,13 +44,14 @@ def parse_hand_data_left(data_str):
     quat_values = values[3:3+80]  # 假设共20个关节，每个关节4个值
     
     # 将四元数值分组
-    quaternions = [to_euler_zyx(quat_values[i:i+4], 1) for i in range(0, 80, 4)]
-    # quaternions = to_euler_zyx(quaternions)
+    # quaternions = [to_euler_zyx(quat_values[i:i+4], 1) for i in range(0, 80, 4)]
+    quaternions = R.from_quat(np.array(quat_values).reshape(-1, 4)).as_euler("zyx")
 
     # 创建关节字典
     joints = {
         # 手掌
-        'wrist': quaternions[0],
+        'wrist_pos': values[:3],
+        'wrist_quat': quaternions[0],
         
         # 拇指
         'thumb_1': quaternions[1],
@@ -107,13 +109,15 @@ def parse_hand_data_right(data_str):
     quat_values = values[3:3+80]  # 假设共20个关节，每个关节4个值
     
     # 将四元数值分组
-    quaternions = [to_euler_zyx(quat_values[i:i+4], -1) for i in range(0, 80, 4)]
-    # quaternions = to_euler_zyx(quaternions)
+    # quaternions = [to_euler_zyx(quat_values[i:i+4], -1) for i in range(0, 80, 4)]
+    quaternions = R.from_quat(np.array(quat_values).reshape(-1, 4)).as_euler("zyx")
+
 
     # 创建关节字典
     joints = {
         # 手掌
-        'wrist': quaternions[0],
+        'wrist_pos': values[:3],
+        'wrist_quat': quaternions[0],
         
         # 拇指
         'thumb_1': quaternions[1],

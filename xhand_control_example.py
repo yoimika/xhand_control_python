@@ -21,7 +21,7 @@ class XHandControlExample:
             self._hand_command.finger_command[i].kp = 100
             self._hand_command.finger_command[i].ki = 0
             self._hand_command.finger_command[i].kd = 0
-            self._hand_command.finger_command[i].position = 0.5
+            self._hand_command.finger_command[i].position = 0
             self._hand_command.finger_command[i].tor_max = 300
             self._hand_command.finger_command[i].mode = 3
 
@@ -147,6 +147,12 @@ class XHandControlExample:
             hand_mode.finger_command[i].mode = mode
         self._device.send_command(self._hand_id, hand_mode)
         time.sleep(1)
+    
+    def realtime(self, data):
+        for i in range(12):
+            self._hand_command.finger_command[i].position = data[i]
+            # print(f"Joint {i} 新位置: {data[i]}")
+        self.exam_send_command()  # 立即发送新位置
 
     # 通过模具对关节进行校准，并输出校准结果。
     def exam_calibrate_joint_by_mold(self):

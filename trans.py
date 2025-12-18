@@ -1,5 +1,6 @@
 import math
 import numpy as np
+from scipy.spatial.transform import Rotation
 
 def to_euler_zyx(t, dir, degrees=False):
     """
@@ -47,3 +48,11 @@ def to_euler_zyx(t, dir, degrees=False):
         )
     else:
         return (yaw, pitch, roll)
+
+if __name__=="__main__":
+    random_rot = Rotation.random(10).as_quat()
+    euler = np.concat([to_euler_zyx(random_rot[i], 1) for i in range(10)]).reshape(-1, 3)
+    print(euler)
+    print(Rotation.from_quat(random_rot).as_euler("zyx"))
+    
+    
